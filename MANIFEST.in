@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include erpnext_techlift_jobs *.css
+recursive-include erpnext_techlift_jobs *.csv
+recursive-include erpnext_techlift_jobs *.html
+recursive-include erpnext_techlift_jobs *.ico
+recursive-include erpnext_techlift_jobs *.js
+recursive-include erpnext_techlift_jobs *.json
+recursive-include erpnext_techlift_jobs *.md
+recursive-include erpnext_techlift_jobs *.png
+recursive-include erpnext_techlift_jobs *.py
+recursive-include erpnext_techlift_jobs *.svg
+recursive-include erpnext_techlift_jobs *.txt
+recursive-exclude erpnext_techlift_jobs *.pyc
