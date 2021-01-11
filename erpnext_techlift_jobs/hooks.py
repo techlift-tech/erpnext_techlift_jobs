@@ -107,6 +107,11 @@ app_license = "MIT"
 # 		"erpnext_techlift_jobs.tasks.monthly"
 # 	]
 # }
+scheduler_events = {
+	"daily": [
+		"erpnext_techlift_jobs.erpnext_techlift_jobs.doctype.erpnext_jobs_settings.erpnext_jobs_settings.erpnext_jobs_sync"
+	]
+}
 
 # Testing
 # -------
