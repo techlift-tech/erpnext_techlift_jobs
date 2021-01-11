@@ -16,11 +16,8 @@ from bs4 import BeautifulSoup
 class ERPNextJobsSettings(Document):
     pass
 
-
+@frappe.whitelist()
 def erpnext_jobs_sync():
-    import pdb
-
-    pdb.set_trace()
     # Get settings doctype
     erpnext_jobs_settings = frappe.get_doc("ERPNext Jobs Settings")
     if not erpnext_jobs_settings:
@@ -45,11 +42,13 @@ def erpnext_jobs_sync():
     # Get Job pade HTML
     response = session.get(url=jobs_url)
     if response.ok:
+        job_link_wise_data = {}
         job_links = __get_job_links_from_html(response.text)
         for job_link in job_links:
             job_data_response = session.get(job_contact_url + "/" + job_link)
             if job_data_response.ok:
                 job_data = __get_data_from_job_page(job_data_response.text)
+                job_link_wise_data[job_link] = job_data
 
 
 def __erpnext_login_and_return_session(username, password, url):
@@ -57,8 +56,8 @@ def __erpnext_login_and_return_session(username, password, url):
     headers = {"Content-type": "application/json"}
     payload = {"usr": username, "pwd": password}
 
-    payload_string = urllib.parse.quote(json.dumps(payload))
-    respose = session.request("POST", url=url, headers=headers, data=payload)
+    payload_string = json.dumps(payload)
+    respose = session.request("POST", url=url, headers=headers, data=payload_string)
 
     if respose.ok:
         return session
@@ -72,7 +71,7 @@ def __get_job_page_html(session, base_url):
 
 def __get_job_links_from_html(html_text):
     href_to_return = []
-    soup = BeautifulSoup(html_text, "html.parsers")
+    soup = BeautifulSoup(html_text, "html.parser")
     anchors = soup.find_all("a", class_="card mb-4", href=True)
     for anchor in anchors:
         href_to_return.append(anchor["href"])
@@ -82,7 +81,7 @@ def __get_job_links_from_html(html_text):
 
 def __get_data_from_job_page(html_text):
     data_to_return = {}
-    soup = BeautifulSoup(html_text, "html.parsers")
+    soup = BeautifulSoup(html_text, "html.parser")
     tables = soup.find_all("table")
     for table in tables:
         rows = table.find_all("tr")
@@ -94,3 +93,19 @@ def __get_data_from_job_page(html_text):
             value = columns[1].get_text()
             data_to_return[prop] = value
     return data_to_return
+
+def __create_lead_if_does_not_exist(job_link, job_data):
+    lead_exist = frappe.get_all("Lead", filters={"lead_url": job_link})
+    if len(lead_exist) == 0:
+        doc = frappe.get_doc({
+            'doctype': 'Lead',
+            'source':  'ERPNext Jobs',
+            'email_id': job_data['Email'],
+            'lead_url': job_link,
+            'notes': '',
+            'mobile_no': job_data['Phone (optional)'],
+            'organization_lead': 1,
+            'company_name': job_data['Company Name'],
+            'job_type': job_data['Job Type'],
+        })
+        doc.save()
