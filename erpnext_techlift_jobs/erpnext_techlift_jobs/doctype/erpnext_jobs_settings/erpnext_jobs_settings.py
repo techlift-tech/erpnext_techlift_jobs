@@ -29,7 +29,10 @@ def erpnext_jobs_sync():
     url = erpnext_jobs_settings.url
     jobs_url = erpnext_jobs_settings.jobs_url
     job_contact_url = erpnext_jobs_settings.job_contact_url
-    if not (username and password and url and jobs_url and job_contact_url):
+    company = erpnext_jobs_settings.company
+
+    if not (username and password and url and jobs_url and job_contact_url and company):
+        frappe.msgprint("Check ERPNext Job Settings")
         return
 
     # Login and return the session for further calls
@@ -37,18 +40,26 @@ def erpnext_jobs_sync():
         username, password, url + "/api/method/login"
     )
     if not session:
+        frappe.msgprint("Unable to create Session")
         return
 
     # Get Job pade HTML
     response = session.get(url=jobs_url)
+    total_added = 0
     if response.ok:
         job_link_wise_data = {}
         job_links = __get_job_links_from_html(response.text)
+        frappe.msgprint("Found %s job links"%len(job_links))
+        
         for job_link in job_links:
             job_data_response = session.get(job_contact_url + "/" + job_link)
             if job_data_response.ok:
                 job_data = __get_data_from_job_page(job_data_response.text)
-                job_link_wise_data[job_link] = job_data
+                added_new = __create_lead_if_does_not_exist(job_contact_url + "/" + job_link, job_data, company)
+                if added_new:
+                    total_added = total_added + 1
+
+    frappe.msgprint("Added %s New Jobs"%(total_added))
 
 
 def __erpnext_login_and_return_session(username, password, url):
@@ -83,6 +94,20 @@ def __get_data_from_job_page(html_text):
     data_to_return = {}
     soup = BeautifulSoup(html_text, "html.parser")
     tables = soup.find_all("table")
+    title_h1 = soup.find_all("h1")
+    h3_tags = soup.find_all("h3")
+
+    for h3_tag in h3_tags:
+        h3_tag_text = h3_tag.get_text()
+        if h3_tag_text == "Details":
+            next_p = h3_tag.find_next("p")
+            details_text = next_p.get_text()
+            data_to_return["details"] = details_text
+            break
+
+    if len(title_h1) == 1:
+        data_to_return["title"] = title_h1[0].get_text()
+
     for table in tables:
         rows = table.find_all("tr")
         for row in rows:
@@ -94,18 +119,59 @@ def __get_data_from_job_page(html_text):
             data_to_return[prop] = value
     return data_to_return
 
-def __create_lead_if_does_not_exist(job_link, job_data):
-    lead_exist = frappe.get_all("Lead", filters={"lead_url": job_link})
+def __create_lead_if_does_not_exist(job_link, job_data, company):
+    email_id = job_data["Email"]
+    lead_exist = frappe.get_all("Lead", filters={"email_id": email_id})
+    title = job_data["title"]
+    details = job_data["details"]
+    job_type = job_data["Job Type"]
+
     if len(lead_exist) == 0:
         doc = frappe.get_doc({
             'doctype': 'Lead',
             'source':  'ERPNext Jobs',
             'email_id': job_data['Email'],
-            'lead_url': job_link,
-            'notes': '',
             'mobile_no': job_data['Phone (optional)'],
-            'organization_lead': 1,
-            'company_name': job_data['Company Name'],
-            'job_type': job_data['Job Type'],
+            'phone': job_data['Phone (optional)'],
+            'lead_name': job_data['Company Name'],
         })
         doc.save()
+        frappe.db.commit()
+        added_new = __add_oppurtunity_if_not_exist(job_link, doc.name, company, title, details, job_type)
+    else:
+        lead_name = lead_exist[0].name
+        added_new = __add_oppurtunity_if_not_exist(job_link, lead_name, company, title, details, job_type)
+
+    return added_new
+def __add_oppurtunity_if_not_exist(job_link, lead_name, company, title, details, job_type):
+    job_link_html = '<a href="%s">Job Url</a>'%(job_link)
+    opp_exist = frappe.get_all("Opportunity", filters={"lead_url_store": job_link_html})
+    print(job_link_html)
+    if len(opp_exist) == 0:
+        doc = frappe.get_doc({
+            "doctype": "Opportunity",
+            "opportunity_from": "Lead",
+            "party_name": lead_name,
+            "lead_url_store": job_link_html,
+            "company": company,
+            "source": "ERPNext Jobs",
+            "erpnext_job_title": title,
+            "details": details,
+            "job_type": job_type
+        })
+        doc.save()
+        frappe.db.commit()
+        return True
+    else:
+        return False
+
+def add_lead_source_if_does_not_exist():
+    try:
+        erpnext_lead_source = frappe.get_doc("Lead Source", "ERPNext Jobs")
+    except:
+        erpnext_lead_source = frappe.get_doc({
+            "doctype": "Lead Source",
+            "source_name": "ERPNext Jobs"
+        })
+        erpnext_lead_source.save()
+    

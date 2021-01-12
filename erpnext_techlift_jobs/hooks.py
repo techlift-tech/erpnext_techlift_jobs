@@ -54,7 +54,7 @@ app_license = "MIT"
 # Installation
 # ------------
 
-# before_install = "erpnext_techlift_jobs.install.before_install"
+before_install = "erpnext_techlift_jobs.erpnext_techlift_jobs.doctype.erpnext_jobs_settings.erpnext_jobs_settings.add_lead_source_if_does_not_exist"
 # after_install = "erpnext_techlift_jobs.install.after_install"
 
 # Desk Notifications

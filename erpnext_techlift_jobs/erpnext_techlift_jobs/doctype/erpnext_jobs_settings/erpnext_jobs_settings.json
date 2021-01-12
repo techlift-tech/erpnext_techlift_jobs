@@ -8,7 +8,9 @@
   "password",
   "url",
   "jobs_url",
-  "job_contact_url"
+  "job_contact_url",
+  "company",
+  "sync_jobs_now"
  ],
  "fields": [
   {
@@ -35,10 +37,21 @@
    "fieldname": "job_contact_url",
    "fieldtype": "Data",
    "label": "Job Contact Url"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "sync_jobs_now",
+   "fieldtype": "Button",
+   "label": "Sync Jobs Now"
   }
  ],
  "issingle": 1,
- "modified": "2021-01-02 10:51:28.378624",
+ "modified": "2021-01-12 18:53:38.523112",
  "modified_by": "Administrator",
  "module": "Erpnext Techlift Jobs",
  "name": "ERPNext Jobs Settings",
