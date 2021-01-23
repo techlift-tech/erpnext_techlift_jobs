@@ -125,25 +125,27 @@ def __create_lead_if_does_not_exist(job_link, job_data, company):
     title = job_data["title"]
     details = job_data["details"]
     job_type = job_data["Job Type"]
-
+    phone_number = job_data['Phone (optional)']
+    
     if len(lead_exist) == 0:
         doc = frappe.get_doc({
             'doctype': 'Lead',
             'source':  'ERPNext Jobs',
-            'email_id': job_data['Email'],
-            'mobile_no': job_data['Phone (optional)'],
-            'phone': job_data['Phone (optional)'],
+            'email_id': email_id,
+            'mobile_no': phone_number,
+            'phone': phone_number,
             'lead_name': job_data['Company Name'],
         })
+
         doc.save()
         frappe.db.commit()
-        added_new = __add_oppurtunity_if_not_exist(job_link, doc.name, company, title, details, job_type)
+        added_new = __add_oppurtunity_if_not_exist(job_link, doc.name, company, title, details, job_type, email_id, phone_number)
     else:
         lead_name = lead_exist[0].name
-        added_new = __add_oppurtunity_if_not_exist(job_link, lead_name, company, title, details, job_type)
+        added_new = __add_oppurtunity_if_not_exist(job_link, lead_name, company, title, details, job_type, email_id, phone_number)
 
     return added_new
-def __add_oppurtunity_if_not_exist(job_link, lead_name, company, title, details, job_type):
+def __add_oppurtunity_if_not_exist(job_link, lead_name, company, title, details, job_type, email_id, phone_number):
     job_link_html = '<a href="%s">Job Url</a>'%(job_link)
     opp_exist = frappe.get_all("Opportunity", filters={"lead_url_store": job_link_html})
     print(job_link_html)
@@ -157,7 +159,9 @@ def __add_oppurtunity_if_not_exist(job_link, lead_name, company, title, details,
             "source": "ERPNext Jobs",
             "erpnext_job_title": title,
             "details": details,
-            "job_type": job_type
+            "job_type": job_type,
+            "contact_email": email_id,
+            "contact_mobile": phone_number
         })
         doc.save()
         frappe.db.commit()
